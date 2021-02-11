@@ -1122,16 +1122,16 @@ JsonObject& process_scale_v1(JsonObject& BLEdata) {
   const char* servicedata = BLEdata["servicedata"].as<const char*>();
 
   if (servicedata[0] == '2') { // stabilized
-  double weight = 0;
+    double weight = 0;
     if (servicedata[1] == '2') { //kg
       weight = (double)value_from_hex_data(servicedata, 2, 4, true) / 200;
       BLEdata.set("unit", "kg");
-    }else if(servicedata[1] == '3') {//lbs
+    } else if (servicedata[1] == '3') { //lbs
       weight = (double)value_from_hex_data(servicedata, 2, 4, true) / 100;
       BLEdata.set("unit", "lbs");
     }
-  //Set Json value
-  BLEdata.set("weight", (double)weight);
+    //Set Json value
+    BLEdata.set("weight", (double)weight);
   }
 
   return BLEdata;
