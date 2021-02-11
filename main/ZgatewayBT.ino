@@ -1129,6 +1129,8 @@ JsonObject& process_scale_v1(JsonObject& BLEdata) {
     } else if (servicedata[1] == '3') { //lbs
       weight = (double)value_from_hex_data(servicedata, 2, 4, true) / 100;
       BLEdata.set("unit", "lbs");
+    } else { //unknown unit
+      BLEdata.set("unit", "unknown");
     }
     //Set Json value
     BLEdata.set("weight", (double)weight);
