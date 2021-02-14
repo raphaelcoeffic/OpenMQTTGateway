@@ -99,7 +99,7 @@ void setupRFM69(void) {
     R"({"msgType":"config","freq":%d,"rfm69hcw":%d,"netid":%d,"node":%d,"power":%d})";
   char payload[128];
 
-  radio = RFM69(RFM69_CS, RFM69_IRQ, GC_IS_RFM69HCW, RFM69_IRQN);
+  radio = RFM69(RFM69_CS, RFM69_IRQ, IS_RFM69HCW, RFM69_IRQN);
 
   // Hard Reset the RFM module
   pinMode(RFM69_RST, OUTPUT);
@@ -109,41 +109,29 @@ void setupRFM69(void) {
   delay(100);
 
   // Initialize radio
-  if (!radio.initialize(pGC->rfmfrequency, pGC->nodeid, pGC->networkid)) {
+  if (!radio.initialize(FREQUENCY, NODEID, NETWORKID)) {
     Log.error(F("ZgatewayRFM69 initialization failed" CR));
   }
 
-  if (GC_IS_RFM69HCW) {
+  if (IS_RFM69HCW) {
     radio.setHighPower(); // Only for RFM69HCW & HW!
   }
-  radio.setPowerLevel(GC_POWER_LEVEL); // power output ranges from 0 (5dBm) to 31 (20dBm)
+  radio.setPowerLevel(POWER_LEVEL); // power output ranges from 0 (5dBm) to 31 (20dBm)
 
-  switch (pGC->rfmfrequency) {
-    case RF69_433MHZ:
-      freq = 433;
-      break;
-    case RF69_868MHZ:
-      freq = 868;
-      break;
-    case RF69_915MHZ:
-      freq = 915;
-      break;
-    case RF69_315MHZ:
-      freq = 315;
-      break;
-    default:
-      freq = -1;
-      break;
-  }
-  Log.notice(F("ZgatewayRFM69 Listening and transmitting at: %d" CR), freq);
+  Log.notice(F("ZgatewayRFM69 Listening and transmitting at: %d" CR),
+             FREQUENCY == RF69_433MHZ ? 433 : FREQUENCY==RF69_868MHZ ? 868 : 915);
 
-  if (pGC->encryptkey[0] != '\0') {
-    Log.notice(F("key='%s'" CR), pGC->encryptkey);
-    radio.encrypt(pGC->encryptkey);
+  // read key from PROGMEM
+  char key[16+1];
+  memset(key, 0, sizeof(key));
+  strncpy_P(key, ENCRYPTKEY, sizeof(key)-1);
+  if (key[0] != '\0') {
+    radio.encrypt(key);
   }
 
   size_t len = snprintf_P(RadioConfig, sizeof(RadioConfig), JSONtemplate,
-                          freq, GC_IS_RFM69HCW, pGC->networkid, pGC->nodeid, GC_POWER_LEVEL);
+                          FREQUENCY == RF69_433MHZ ? 433 : FREQUENCY==RF69_868MHZ ? 868 : 915,
+                          IS_RFM69HCW, NETWORKID, NODEID, POWER_LEVEL);
   if (len >= sizeof(RadioConfig)) {
     Log.trace(F("\n\n*** RFM69 config truncated ***\n" CR));
   }
