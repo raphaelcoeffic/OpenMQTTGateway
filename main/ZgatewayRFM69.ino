@@ -39,6 +39,8 @@ char RadioConfig[128];
 
 // vvvvvvvvv Global Configuration vvvvvvvvvvv
 
+#define GC_VERSION 1
+
 struct _GLOBAL_CONFIG {
   uint32_t checksum;
   char rfmapname[32];
@@ -58,7 +60,7 @@ struct _GLOBAL_CONFIG* pGC;
 // vvvvvvvvv Global Configuration vvvvvvvvvvv
 uint32_t gc_checksum() {
   uint8_t* p = (uint8_t*)pGC;
-  uint32_t checksum = 0;
+  uint32_t checksum = GC_VERSION;
   p += sizeof(pGC->checksum);
   for (size_t i = 0; i < (sizeof(*pGC) - 4); i++) {
     checksum += *p++;
@@ -94,10 +96,17 @@ void setupRFM69(void) {
 #  endif
   int freq;
   static const char PROGMEM JSONtemplate[] =
-      R"({"msgType":"config","freq":%d,"rfm69hcw":%d,"netid":%d,"power":%d})";
+    R"({"msgType":"config","freq":%d,"rfm69hcw":%d,"netid":%d,"node":%d,"power":%d})";
   char payload[128];
 
   radio = RFM69(RFM69_CS, RFM69_IRQ, GC_IS_RFM69HCW, RFM69_IRQN);
+
+  // Hard Reset the RFM module
+  pinMode(RFM69_RST, OUTPUT);
+  digitalWrite(RFM69_RST, HIGH);
+  delay(100);
+  digitalWrite(RFM69_RST, LOW);
+  delay(100);
 
   // Initialize radio
   if (!radio.initialize(pGC->rfmfrequency, pGC->nodeid, pGC->networkid)) {
@@ -108,9 +117,6 @@ void setupRFM69(void) {
     radio.setHighPower(); // Only for RFM69HCW & HW!
   }
   radio.setPowerLevel(GC_POWER_LEVEL); // power output ranges from 0 (5dBm) to 31 (20dBm)
-
-  if (pGC->encryptkey[0] != '\0')
-    radio.encrypt(pGC->encryptkey);
 
   switch (pGC->rfmfrequency) {
     case RF69_433MHZ:
@@ -131,10 +137,18 @@ void setupRFM69(void) {
   }
   Log.notice(F("ZgatewayRFM69 Listening and transmitting at: %d" CR), freq);
 
+  if (pGC->encryptkey[0] != '\0') {
+    Log.notice(F("key='%s'" CR), pGC->encryptkey);
+    radio.encrypt(pGC->encryptkey);
+  }
+
   size_t len = snprintf_P(RadioConfig, sizeof(RadioConfig), JSONtemplate,
-                          freq, GC_IS_RFM69HCW, pGC->networkid, GC_POWER_LEVEL);
+                          freq, GC_IS_RFM69HCW, pGC->networkid, pGC->nodeid, GC_POWER_LEVEL);
   if (len >= sizeof(RadioConfig)) {
     Log.trace(F("\n\n*** RFM69 config truncated ***\n" CR));
+  }
+  else {
+    Log.notice(F("RadioConfig: %s" CR), RadioConfig);
   }
 }
 
@@ -213,7 +227,7 @@ void MQTTtoRFM69(char* topicOri, JsonObject& RFM69data) {
       Log.trace(F("MQTTtoRFM69 data ok" CR));
       int valueRCV = RFM69data["receiverid"] | defaultRFM69ReceiverId; //default receiver id value
       Log.notice(F("RFM69 receiver ID: %d" CR), valueRCV);
-      if (radio.sendWithRetry(valueRCV, data, strlen(data), 10)) {
+      if (radio.sendWithRetry(valueRCV, data, strlen(data), 3, 50)) {
         Log.notice(F(" OK " CR));
         // Acknowledgement to the GTWRF topic
         pub(subjectGTWRFM69toMQTT, RFM69data); // we acknowledge the sending by publishing the value to an acknowledgement topic, for the moment even if it is a signal repetition we acknowledge also

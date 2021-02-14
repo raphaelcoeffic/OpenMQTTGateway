@@ -45,7 +45,7 @@ extern void MQTTtoRFM69(char* topicOri, JsonObject& RFdata);
 // Default values
 const char PROGMEM ENCRYPTKEY[] = "sampleEncryptKey";
 const char PROGMEM MDNS_NAME[] = "rfm69gw1";
-const char PROGMEM MQTT_BROKER[] = "raspi2";
+const char PROGMEM MQTT_BROKER[] = "192.168.1.30";
 const char PROGMEM RFM69AP_NAME[] = "RFM69-AP";
 #define NETWORKID 200 //the same on all nodes that talk to each other
 #define NODEID    10
@@ -55,7 +55,7 @@ const char PROGMEM RFM69AP_NAME[] = "RFM69-AP";
 //#define FREQUENCY     RF69_868MHZ
 //#define FREQUENCY      RF69_915MHZ
 #define IS_RFM69HCW true // set to 'true' if you are using an RFM69HCW module
-#define POWER_LEVEL 31
+#define POWER_LEVEL 0
 
 /*-------------------PIN DEFINITIONS----------------------*/
 #if defined(ESP8266)
